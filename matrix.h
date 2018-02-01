@@ -30,7 +30,8 @@ scalar_t* matrix_get(matrix_t* a, size_t i, size_t j);
 void      matrix_set(matrix_t* a, size_t i, size_t j, scalar_t* x);
 scalar_t* matrix_det(matrix_t* mat);
 bool      matrix_is_inversible(matrix_t* mat);
-void      matrix_inverse(matrix_t* mat);
+matrix_t* matrix_inverse(matrix_t* mat);
+matrix_t* matrix_transpose(matrix_t* mat);
 char*     matrix_string(matrix_t* mat);
 
 #endif /* matrix.h */

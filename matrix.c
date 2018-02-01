@@ -246,7 +246,24 @@ void matrix_set(matrix_t* a, size_t i, size_t j, scalar_t* x)
 
 scalar_t* matrix_det(matrix_t* mat);
 bool      matrix_is_inversible(matrix_t* mat);
-void      matrix_inverse(matrix_t* mat);
+matrix_t* matrix_inverse(matrix_t* mat);
+
+matrix_t* matrix_transpose(matrix_t* matrix)
+{
+    if (matrix == NULL) {
+        exception("matrix.transpose(%p): null pointer exception", matrix);
+    }
+
+    matrix_t* mat = matrix_new(matrix->n, matrix->m);
+
+    for (size_t i = 0; i < matrix->m; i++) {
+        for (size_t j = 0; j < matrix->n; j++) {
+            scalar_copy(&mat->lines[j].vec[i], &matrix->lines[i].vec[j]);
+        }
+    }
+
+    return mat;
+}
 
 char* matrix_string(matrix_t* mat)
 {
