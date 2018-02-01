@@ -60,27 +60,27 @@ matrix_t* matrix_from_diag(vector_t* diag)
     return mat;
 }
 
-matrix_t* matrix_from_vec(vector_t* vec)
+matrix_t* matrix_from_vector(vector_t* vector)
 {
-    if (vec == NULL) {
-        exception("matrix.from_vec(%p): null pointer exception", vec);
+    if (vector == NULL) {
+        exception("matrix.from_vec(%p): null pointer exception", vector);
     }
 
-    size_t m = vec->line ? 1 : vec->n;
-    size_t n = vec->line ? vec->n : 1;
+    size_t m = vector->line ? 1 : vector->n;
+    size_t n = vector->line ? vector->n : 1;
 
     matrix_t* mat = matrix_new(m, n);
 
-    if (vec->line) {
-        for (size_t i = 0; i < vec->n; i++) {
-            scalar_copy(&mat->lines[0].vec[i], &vec->vec[i]);
+    if (vector->line) {
+        for (size_t i = 0; i < vector->n; i++) {
+            scalar_copy(&mat->lines[0].vec[i], &vector->vec[i]);
         }
 
         return mat;
     }
 
-    for (size_t i = 0; i < vec->n; i++) {
-        scalar_copy(&mat->lines[i].vec[0], &vec->vec[i]);
+    for (size_t i = 0; i < vector->n; i++) {
+        scalar_copy(&mat->lines[i].vec[0], &vector->vec[i]);
     }
 
     return mat;
@@ -94,6 +94,11 @@ matrix_t* matrix_from_prod(matrix_t* a, matrix_t* b)
 
     size_t m = a->m;
     size_t n = b->n;
+
+    if (a->n != b->m) {
+        exception("matrix.from_prod(%p, %p): matrix dimension mismatch A is (%zu, %zu), B is (%zu, %zu)",
+            a, b, a->m, a->n, b->m, b->n);
+    }
 
     matrix_t* mat = matrix_new(m, n);
 
