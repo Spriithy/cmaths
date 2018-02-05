@@ -80,7 +80,7 @@ void scalar_copy(scalar_t* dst, scalar_t* src)
 
 scalar_cmp_t scalar_compare(scalar_t* x, scalar_t* y)
 {
-    if (x == NULL && y == NULL) {
+    if (x == y) {
         return EQ;
     }
 
