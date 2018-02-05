@@ -19,13 +19,13 @@ typedef struct test {
 #define TEST_INIT() \
     T t = (T) { 0 }
 
-#define TEST_END()                                                      \
-    if (t.err_count > 0) {                                              \
-        printf("--------------------\nTEST FAIL (%zu)\n", t.err_count); \
-        return EXIT_FAILURE;                                            \
-    } else {                                                            \
-        printf("--------------------\nTEST SUCCESS\n");                 \
-        return EXIT_SUCCESS;                                            \
+#define TEST_END()                                                                     \
+    if (t.err_count > 0) {                                                             \
+        printf("--------------------\nTEST FAIL (%s) (%zu)\n", __FILE__, t.err_count); \
+        return EXIT_FAILURE;                                                           \
+    } else {                                                                           \
+        printf("--------------------\nTEST SUCCESS (%s)\n", __FILE__);                 \
+        return EXIT_SUCCESS;                                                           \
     }
 
 #define TEST(func)                                  \
