@@ -15,7 +15,7 @@ matrix_t* matrix_new(size_t m, size_t n)
     CHECK_NOT_NULL(mat->lines);
 
     for (size_t i = 0; i < m; i++) {
-        mat->lines[i] = *vector_new(n, true);
+        mat->lines[i] = *vector_new(n);
     }
 
     return mat;
@@ -52,16 +52,16 @@ matrix_t* matrix_from_diag(vector_t* diag)
     return mat;
 }
 
-matrix_t* matrix_from_vector(vector_t* vector)
+matrix_t* matrix_from_vector(vector_t* vector, bool line)
 {
     CHECK_NOT_NULL(vector);
 
-    size_t m = vector->line ? 1 : vector->n;
-    size_t n = vector->line ? vector->n : 1;
+    size_t m = line ? 1 : vector->n;
+    size_t n = line ? vector->n : 1;
 
     matrix_t* mat = matrix_new(m, n);
 
-    if (vector->line) {
+    if (line) {
         for (size_t i = 0; i < vector->n; i++) {
             scalar_copy(&mat->lines[0].items[i], &vector->items[i]);
         }
@@ -158,7 +158,7 @@ vector_t* matrix_row(matrix_t* matrix, size_t i)
         ERROR("row number out of bounds (i=%zu)", i);
     }
 
-    vector_t* line = vector_new(matrix->n, true);
+    vector_t* line = vector_new(matrix->n);
     vector_copy(line, &matrix->lines[i]);
     return line;
 }
@@ -171,7 +171,7 @@ vector_t* matrix_col(matrix_t* matrix, size_t j)
         ERROR("column number out of bounds (j=%zu)", j);
     }
 
-    vector_t* col = vector_new(matrix->m, false);
+    vector_t* col = vector_new(matrix->m);
     for (size_t i = 0; i < matrix->m; i++) {
         scalar_copy(&col->items[i], &matrix->lines[i].items[j]);
     }
@@ -183,7 +183,7 @@ vector_t* matrix_diag(matrix_t* matrix)
 {
     CHECK_NOT_NULL(matrix);
 
-    vector_t* col = vector_new(matrix->m, false);
+    vector_t* col = vector_new(matrix->m);
 
     for (size_t i = 0; i < matrix->m; i++) {
         scalar_copy(&col->items[i], &matrix->lines[i].items[i]);

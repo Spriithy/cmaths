@@ -2,13 +2,12 @@
 #include "matrix.h"
 #include "utils.h"
 
-vector_t* vector_new(size_t n, bool line)
+vector_t* vector_new(size_t n)
 {
     vector_t* vector = malloc(sizeof(*vector));
     CHECK_NOT_NULL(vector);
 
     vector->n     = n;
-    vector->line  = line;
     vector->items = calloc(n, sizeof(scalar_t));
     CHECK_NOT_NULL(vector->items);
 
@@ -20,11 +19,11 @@ vector_t* vector_new(size_t n, bool line)
     return vector;
 }
 
-vector_t* vector_from(scalar_t* vals[], size_t n, bool line)
+vector_t* vector_from(scalar_t* vals[], size_t n)
 {
     CHECK_NOT_NULL(vals);
 
-    vector_t* vector = vector_new(n, line);
+    vector_t* vector = vector_new(n);
 
     for (size_t i = 0; i < n; i++) {
         scalar_copy(&vector->items[i], vals[i]);
@@ -59,10 +58,6 @@ void vector_add(vector_t* u, vector_t* v)
     CHECK_NOT_NULL(u);
     CHECK_NOT_NULL(v);
 
-    if (u->line != v->line) {
-        ERROR("vector dimension mismatch. u is %s and v is %s\n", u->line ? "line" : "column", v->line ? "line" : "column");
-    }
-
     if (u->n != v->n) {
         ERROR("vector dimension mismatch (u=%zu, v=%zu)\n", u->n, v->n);
     }
@@ -76,10 +71,6 @@ void vector_sub(vector_t* u, vector_t* v)
 {
     CHECK_NOT_NULL(u);
     CHECK_NOT_NULL(v);
-
-    if (u->line != v->line) {
-        ERROR("vector dimension mismatch. u is %s and v is %s\n", u->line ? "line" : "column", v->line ? "line" : "column");
-    }
 
     if (u->n != v->n) {
         ERROR("vector dimension mismatch (u=%zu, v=%zu)\n", u->n, v->n);

@@ -17,7 +17,7 @@ matrix_t* matrix_new(size_t m, size_t n);
 matrix_t* matrix_square(size_t n);
 matrix_t* matrix_eye(size_t n);
 matrix_t* matrix_from_diag(vector_t* diag);
-matrix_t* matrix_from_vector(vector_t* vector);
+matrix_t* matrix_from_vector(vector_t* vector, bool line);
 matrix_t* matrix_from_prod(matrix_t* a, matrix_t* b);
 void      matrix_scale(matrix_t* matrix, scalar_t* scalar);
 void      matrix_add(matrix_t* a, matrix_t* b);
