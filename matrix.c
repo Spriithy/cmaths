@@ -321,7 +321,7 @@ char* matrix_string(matrix_t* matrix)
         for (size_t i = 0; i < matrix->m; i++) {
             size_t width = scalar_string_length(&matrix->rows[i][j]);
             if (width > col_width[j]) {
-                col_width[j] = width; // discard '\0'
+                col_width[j] = width + (width > 2 ? -1 : 0);
             }
         }
     }
