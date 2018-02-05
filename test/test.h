@@ -35,37 +35,37 @@ typedef struct test {
         printf("FAIL %s\n\n", STR_OF(func##_test)); \
     }
 
-#define ASSERT_TRUE(expr)                                         \
-    {                                                             \
-        bool b = (expr);                                          \
-        if (!b) {                                                 \
-            t->err_count++;                                       \
-            printf("FAIL %s\n", __FUNCTION__);                    \
-            printf("\t%s\tExpected TRUE, got FALSE.\n\n", #expr); \
-            return TEST_FAIL;                                     \
-        }                                                         \
+#define ASSERT_TRUE(expr)                                           \
+    {                                                               \
+        bool b = (expr);                                            \
+        if (!b) {                                                   \
+            t->err_count++;                                         \
+            printf("FAIL %s at line %d\n", __FUNCTION__, __LINE__); \
+            printf("\t%s\tExpected TRUE, got FALSE.\n\n", #expr);   \
+            return TEST_FAIL;                                       \
+        }                                                           \
     }
 
-#define ASSERT_FALSE(expr)                                        \
-    {                                                             \
-        bool b = (expr);                                          \
-        if (b) {                                                  \
-            t->err_count++;                                       \
-            printf("FAIL %s\n", __FUNCTION__);                    \
-            printf("\t%s\tExpected FALSE, got TRUE.\n\n", #expr); \
-            return TEST_FAIL;                                     \
-        }                                                         \
+#define ASSERT_FALSE(expr)                                          \
+    {                                                               \
+        bool b = (expr);                                            \
+        if (b) {                                                    \
+            t->err_count++;                                         \
+            printf("FAIL %s at line %d\n", __FUNCTION__, __LINE__); \
+            printf("\t%s\tExpected FALSE, got TRUE.\n\n", #expr);   \
+            return TEST_FAIL;                                       \
+        }                                                           \
     }
 
-#define ASSERT_NULL(expr)                              \
-    {                                                  \
-        bool b = (expr) == NULL;                       \
-        if (!b) {                                      \
-            t->err_count++;                            \
-            printf("FAIL %s\n", __FUNCTION__);         \
-            printf("\t%s\tExpected NULL.\n\n", #expr); \
-            return TEST_FAIL;                          \
-        }                                              \
+#define ASSERT_NULL(expr)                                           \
+    {                                                               \
+        bool b = (expr) == NULL;                                    \
+        if (!b) {                                                   \
+            t->err_count++;                                         \
+            printf("FAIL %s at line %d\n", __FUNCTION__, __LINE__); \
+            printf("\t%s\tExpected NULL.\n\n", #expr);              \
+            return TEST_FAIL;                                       \
+        }                                                           \
     }
 
 #define ASSERT_NOT_NULL(expr)                                        \
@@ -73,7 +73,7 @@ typedef struct test {
         bool b = (expr) == NULL;                                     \
         if (b) {                                                     \
             t->err_count++;                                          \
-            printf("FAIL %s\n", __FUNCTION__);                       \
+            printf("FAIL %s at line %d\n", __FUNCTION__, __LINE__);  \
             printf("\t%s\tExpected not-NULL, got NULL.\n\n", #expr); \
             return TEST_FAIL;                                        \
         }                                                            \
@@ -84,7 +84,7 @@ typedef struct test {
         bool eq = (expr1) == (expr2);                                       \
         if (!eq) {                                                          \
             t->err_count++;                                                 \
-            printf("FAIL %s\n", __FUNCTION__);                              \
+            printf("FAIL %s at line %d\n", __FUNCTION__, __LINE__);         \
             printf("\t%s\tExpected equality with %s.\n\n", #expr1, #expr2); \
             return TEST_FAIL;                                               \
         }                                                                   \
@@ -95,7 +95,7 @@ typedef struct test {
         bool eq = (expr1) == (expr2);                                            \
         if (eq) {                                                                \
             t->err_count++;                                                      \
-            printf("FAIL %s\n", __FUNCTION__);                                   \
+            printf("FAIL %s at line %d\n", __FUNCTION__, __LINE__);              \
             printf("\t%s\tDidn't expect equality with %s.\n\n", #expr1, #expr2); \
             return TEST_FAIL;                                                    \
         }                                                                        \

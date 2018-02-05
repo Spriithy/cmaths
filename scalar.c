@@ -297,11 +297,8 @@ void scalar_mul(scalar_t* result, scalar_t* x, scalar_t* y)
     result->a *= y->a;
     result->b *= y->b;
 
-    if (x->negative == y->negative) {
-        result->negative = false;
-    } else {
-        result->negative = true;
-    }
+    // sign of the result is sign(x) XOR sign(y)
+    result->negative = x->negative ^ y->negative;
 
     scalar_norm(result);
 }
