@@ -1,29 +1,20 @@
 #include "vector.h"
-#include "exception.h"
 #include "matrix.h"
+#include "utils.h"
 
 vector_t* vector_new(size_t n, bool line)
 {
     vector_t* vector = malloc(sizeof(*vector));
+    CHECK_NOT_NULL(vector);
 
-    if (vector == NULL) {
-        exception("vector.new(%zu, %s): null pointer exception",
-            n, line ? "true" : "false");
-    }
-
-    vector->n    = n;
-    vector->line = line;
-    vector->vec  = calloc(n, sizeof(scalar_t));
+    vector->n     = n;
+    vector->line  = line;
+    vector->items = calloc(n, sizeof(scalar_t));
+    CHECK_NOT_NULL(vector->items);
 
     for (size_t i = 0; i < n; i++) {
-        vector->vec[i].a = 0;
-        vector->vec[i].b = 1;
-    }
-
-    if (vector->vec == NULL) {
-        free(vector);
-        exception("vector.new(%zu, %s): null pointer exception",
-            n, line ? "true" : "false");
+        vector->items[i].a = 0;
+        vector->items[i].b = 1;
     }
 
     return vector;
@@ -31,15 +22,12 @@ vector_t* vector_new(size_t n, bool line)
 
 vector_t* vector_from(scalar_t* vals[], size_t n, bool line)
 {
+    CHECK_NOT_NULL(vals);
+
     vector_t* vector = vector_new(n, line);
 
-    if (vector == NULL) {
-        exception("vector.from(%p, %zu, %s): null pointer exception",
-            vals, n, line ? "true" : "false");
-    }
-
     for (size_t i = 0; i < n; i++) {
-        scalar_copy(&vector->vec[i], vals[i]);
+        scalar_copy(&vector->items[i], vals[i]);
     }
 
     return vector;
@@ -47,81 +35,75 @@ vector_t* vector_from(scalar_t* vals[], size_t n, bool line)
 
 void vector_copy(vector_t* u, vector_t* v)
 {
+    CHECK_NOT_NULL(u);
+    CHECK_NOT_NULL(v);
+
     u->n = v->n;
     for (size_t i = 0; i < v->n; i++) {
-        scalar_copy(&u->vec[i], &v->vec[i]);
+        scalar_copy(&u->items[i], &v->items[i]);
     }
 }
 
 void vector_scale(vector_t* vector, scalar_t* scalar)
 {
-    if (vector == NULL || scalar == NULL) {
-        exception("vector.new(%p, %p): null pointer exception", vector, scalar);
-    }
+    CHECK_NOT_NULL(vector);
+    CHECK_NOT_NULL(scalar);
 
     for (size_t i = 0; i < vector->n; i++) {
-        scalar_mul(&vector->vec[i], &vector->vec[i], scalar);
+        scalar_mul(&vector->items[i], &vector->items[i], scalar);
     }
 }
 
 void vector_add(vector_t* u, vector_t* v)
 {
-    if (u == NULL || v == NULL) {
-        exception("vector.add(%p, %p): null pointer exception", u, v);
-    }
+    CHECK_NOT_NULL(u);
+    CHECK_NOT_NULL(v);
 
     if (u->line != v->line) {
-        exception("vector.add(%p, %p): vector dimension mismatch. u is %s and v is %s\n",
-            u, v, u->line ? "line" : "column", v->line ? "line" : "column");
+        ERROR("vector dimension mismatch. u is %s and v is %s\n", u->line ? "line" : "column", v->line ? "line" : "column");
     }
 
     if (u->n != v->n) {
-        exception("vector.add(%p, %p): vector dimension mismatch (u=%zu, v=%zu)\n",
-            u, v, u->n, v->n);
+        ERROR("vector dimension mismatch (u=%zu, v=%zu)\n", u->n, v->n);
     }
 
     for (size_t i = 0; i < v->n; i++) {
-        scalar_add(&v->vec[i], &u->vec[i], &v->vec[i]);
+        scalar_add(&v->items[i], &u->items[i], &v->items[i]);
     }
 }
 
 void vector_sub(vector_t* u, vector_t* v)
 {
-    if (u == NULL || v == NULL) {
-        exception("vector.sub(%p, %p): null pointer exception", u, v);
-    }
+    CHECK_NOT_NULL(u);
+    CHECK_NOT_NULL(v);
 
     if (u->line != v->line) {
-        exception("vector.sub(%p, %p): vector dimension mismatch. u is %s and v is %s\n",
-            u, v, u->line ? "line" : "column", v->line ? "line" : "column");
+        ERROR("vector dimension mismatch. u is %s and v is %s\n", u->line ? "line" : "column", v->line ? "line" : "column");
     }
 
     if (u->n != v->n) {
-        exception("vector.sub(%p, %p): vector dimension mismatch (u=%zu, v=%zu)\n",
-            u, v, u->n, v->n);
+        ERROR("vector dimension mismatch (u=%zu, v=%zu)\n", u->n, v->n);
     }
 
     for (size_t i = 0; i < v->n; i++) {
-        scalar_sub(&v->vec[i], &u->vec[i], &v->vec[i]);
+        scalar_sub(&v->items[i], &u->items[i], &v->items[i]);
     }
 }
 
 scalar_t* vector_dot_prod(vector_t* u, vector_t* v)
 {
-    if (u == NULL || v == NULL) {
-        exception("vector.dot_prod(%p, %p): null pointer exception", u, v);
-    }
+    CHECK_NOT_NULL(u);
+    CHECK_NOT_NULL(v);
 
     if (u->n != v->n) {
-        exception("vector.dot_prod(%p, %p): vector size mismatch (u=%zu, v=%zu)",
-            u, v, u->n, v->n);
+        ERROR("vector size mismatch (u=%zu, v=%zu)", u->n, v->n);
     }
 
     scalar_t* dot = scalar_from(0);
 
     scalar_t* tmp = scalar_from(0);
     for (size_t i = 0; i < u->n; i++) {
-        scalar_mul(tmp, &u->vec[i], &v->vec[i]);
+        scalar_mul(tmp, &u->items[i], &v->items[i]);
         scalar_add(dot, dot, tmp);
     }
     free(tmp);
@@ -132,38 +114,33 @@ scalar_t* vector_dot_prod(vector_t* u, vector_t* v)
 scalar_t* vector_get(vector_t* vector, size_t i)
 {
     if (i >= vector->n) {
-        exception("vector.get(%p, %zu): access out of bounds (size=%zu)",
-            vector, i, vector->n);
+        ERROR("index out of bounds (i=%zu, size=%zu)", i, vector->n);
     }
 
-    return scalar_new(vector->vec[i].a, vector->vec[i].b, vector->vec[i].negative);
+    return scalar_new(vector->items[i].a, vector->items[i].b, vector->items[i].negative);
 }
 
 void vector_set(vector_t* vector, size_t i, scalar_t* scalar)
 {
     if (i >= vector->n) {
-        exception("vector.get(%p, %zu): access out of bounds (size=%zu)",
-            vector, i, vector->n);
+        ERROR("index out of bounds (i=%zu,size=%zu)", i, vector->n);
     }
 
-    vector->vec[i].negative = scalar->negative;
-
-    vector->vec[i].a = scalar->a;
-    vector->vec[i].b = scalar->b;
+    scalar_copy(&vector->items[i], scalar);
 }
 
 char* vector_string(vector_t* vector)
 {
-    if (vector == NULL) {
-        exception("vector.string(%p): null pointer exception", vector);
-    }
+    CHECK_NOT_NULL(vector);
 
     char* str = malloc(vector_string_length(vector));
+    CHECK_NOT_NULL(str);
+
     char *ofs, *tmp;
 
     ofs = str + sprintf(str, "[");
     for (size_t i = 0; i < vector->n; i++) {
-        tmp = scalar_string(&vector->vec[i]);
+        tmp = scalar_string(&vector->items[i]);
         ofs += sprintf(ofs, i == 0 ? "%s" : " %s", tmp);
         free(tmp);
     }
@@ -174,14 +151,12 @@ char* vector_string(vector_t* vector)
 
 size_t vector_string_length(vector_t* vector)
 {
-    if (vector == NULL) {
-        exception("vector.string(%p): null pointer exception", vector);
-    }
+    CHECK_NOT_NULL(vector);
 
     size_t len = 3; // '[' + ']' + '\0'
 
     for (size_t i = 0; i < vector->n; i++) {
-        len += scalar_string_length(&vector->vec[i]) + 2; // ' ' + scalar
+        len += scalar_string_length(&vector->items[i]) + 2; // ' ' + scalar
     }
 
     // remove first ' ' if vector isn't empty

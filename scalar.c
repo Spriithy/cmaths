@@ -1,5 +1,5 @@
 #include "scalar.h"
-#include "exception.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -21,46 +21,42 @@ static uint64_t uint64_lcm(uint64_t a, uint64_t b)
     return (a * b) / uint64_gcd(a, b);
 }
 
-static void scalar_norm(scalar_t* f)
+static void scalar_norm(scalar_t* scalar)
 {
-    if (f == NULL) {
+    CHECK_NOT_NULL(scalar);
+
+    if (scalar->a == 0 || scalar->b == 1) {
         return;
     }
 
-    if (f->a == 0 || f->b == 1) {
+    if (scalar->a == scalar->b) {
+        scalar->a = 1;
+        scalar->b = 1;
         return;
     }
 
-    if (f->a == f->b) {
-        f->a = 1;
-        f->b = 1;
-        return;
-    }
-
-    uint64_t gcd = uint64_gcd(f->a, f->b);
+    uint64_t gcd = uint64_gcd(scalar->a, scalar->b);
 
     if (gcd == 1) {
         return;
     }
 
-    f->a /= gcd;
-    f->b /= gcd;
+    scalar->a /= gcd;
+    scalar->b /= gcd;
 }
 
 static void scalar_cpy(scalar_t* dst, scalar_t* src)
 {
     dst->negative = src->negative;
-    dst->a        = src->a;
-    dst->b        = src->b;
+
+    dst->a = src->a;
+    dst->b = src->b;
 }
 
 scalar_t* scalar_new(uint64_t a, uint64_t b, bool negative)
 {
     scalar_t* scalar = malloc(sizeof(*scalar));
-
-    if (scalar == NULL) {
-        return NULL;
-    }
+    CHECK_NOT_NULL(scalar);
 
     scalar->negative = negative;
 
@@ -77,10 +73,8 @@ scalar_t* scalar_from(int64_t n)
 
 void scalar_copy(scalar_t* dst, scalar_t* src)
 {
-    if (dst == NULL || src == NULL) {
-        exception("scalar.copy(%p, %p): null pointer exception", dst, src);
-    }
-
+    CHECK_NOT_NULL(dst);
+    CHECK_NOT_NULL(src);
     scalar_cpy(dst, src);
 }
 
@@ -156,109 +150,104 @@ bool scalar_less_than(scalar_t* x, scalar_t* y)
     return scalar_compare(x, y) == LT;
 }
 
-void scalar_opposite(scalar_t* r, scalar_t* scalar)
+void scalar_opposite(scalar_t* result, scalar_t* scalar)
 {
-    if (r == NULL || scalar == NULL) {
-        exception("scalar.opposite(%p, %p): null pointer exception", r, scalar);
-    }
-
-    scalar_cpy(r, scalar);
-    r->negative = !r->negative;
+    CHECK_NOT_NULL(result);
+    CHECK_NOT_NULL(scalar);
+    scalar_cpy(result, scalar);
+    result->negative = !result->negative;
 }
 
-void scalar_abs(scalar_t* r, scalar_t* scalar)
+void scalar_abs(scalar_t* result, scalar_t* scalar)
 {
-    if (r == NULL || scalar == NULL) {
-        exception("scalar.abs(%p, %p): null pointer exception", r, scalar);
-    }
-
-    scalar_cpy(r, scalar);
-    r->negative = false;
+    CHECK_NOT_NULL(result);
+    CHECK_NOT_NULL(scalar);
+    scalar_cpy(result, scalar);
+    result->negative = false;
 }
 
-void scalar_inverse(scalar_t* r, scalar_t* scalar)
+void scalar_inverse(scalar_t* result, scalar_t* scalar)
 {
-    if (r == NULL || scalar == NULL) {
-        exception("scalar.inverse(%p, %p): null pointer exception", r, scalar);
-    }
+    CHECK_NOT_NULL(result);
+    CHECK_NOT_NULL(scalar);
 
     if (scalar->a == 0) {
-        exception("scalar.inverse(%p, %p): division by 0", r, scalar);
+        ERROR_MESSAGE(" division by 0");
     }
 
-    r->negative = scalar->negative;
-    r->a        = scalar->b;
-    r->b        = scalar->a;
-    scalar_norm(r);
+    result->negative = scalar->negative;
+
+    result->a = scalar->b;
+    result->b = scalar->a;
+
+    scalar_norm(result);
 }
 
-void scalar_scale(scalar_t* r, scalar_t* scalar, uint64_t n, bool negative)
+void scalar_scale(scalar_t* result, scalar_t* scalar, uint64_t n, bool negative)
 {
-    if (r == NULL || scalar == NULL) {
-        exception("scalar.scale(%p, %p, %zu, %s): null pointer exception",
-            r, scalar, n, negative ? "true" : "false");
-    }
+    CHECK_NOT_NULL(result);
+    CHECK_NOT_NULL(scalar);
 
-    scalar_cpy(r, scalar);
+    scalar_cpy(result, scalar);
 
-    if ((r->negative && negative) || (!r->negative && !negative)) {
-        r->negative = false;
+    if ((result->negative && negative) || (!result->negative && !negative)) {
+        result->negative = false;
     } else {
-        r->negative = true;
+        result->negative = true;
     }
 
-    r->a *= n;
-    scalar_norm(r);
+    result->a *= n;
+    scalar_norm(result);
 }
 
-void scalar_add(scalar_t* r, scalar_t* x, scalar_t* y)
+void scalar_add(scalar_t* result, scalar_t* x, scalar_t* y)
 {
-    if (r == NULL || x == NULL || y == NULL) {
-        exception("scalar.add(%p, %p, %p): null pointer exception", r, x, y);
-    }
+    CHECK_NOT_NULL(result);
+    CHECK_NOT_NULL(x);
+    CHECK_NOT_NULL(y);
 
     uint64_t xx = x->a;
     uint64_t yy = y->a;
 
     if (xx == 0 && yy == 0) {
-        r->a = 0;
+        result->a = 0;
         return;
     }
 
     // Copy LHS initial sign
-    r->negative = x->negative;
+    result->negative = x->negative;
 
     if (x->b == y->b) {
     same_denominator:
         if (xx > yy) {
             if (y->negative) {
-                r->a = xx - yy;
+                result->a = xx - yy;
                 goto norm;
             }
 
-            r->a = xx + yy;
+            result->a = xx + yy;
             goto norm;
         }
 
         if (xx < yy) {
             if (y->negative) {
-                r->negative = true;
-                r->a        = yy - xx;
+                result->negative = true;
+                result->a        = yy - xx;
                 goto norm;
             }
 
             if (x->negative) {
-                r->negative = false;
-                r->a        = yy - xx;
+                result->negative = false;
+                result->a        = yy - xx;
                 goto norm;
             }
 
-            r->a = xx + yy;
+            result->a = xx + yy;
             goto norm;
         }
 
         // xx == yy
-        r->a = xx * 2;
+        result->a = xx * 2;
         goto norm;
     }
 
@@ -270,106 +259,90 @@ void scalar_add(scalar_t* r, scalar_t* x, scalar_t* y)
     xx = mx * x->a;
     yy = my * y->a;
 
-    r->b = lcm;
+    result->b = lcm;
     goto same_denominator;
 
 norm:
-    scalar_norm(r);
+    scalar_norm(result);
 }
 
-void scalar_sub(scalar_t* r, scalar_t* x, scalar_t* y)
+void scalar_sub(scalar_t* result, scalar_t* x, scalar_t* y)
 {
-    if (r == NULL || x == NULL || y == NULL) {
-        exception("scalar.sub(%p, %p, %p): null pointer exception", r, x, y);
-    }
-
-    scalar_inverse(y, y);
-    scalar_add(r, x, y);
-    scalar_inverse(y, y);
+    CHECK_NOT_NULL(result);
+    CHECK_NOT_NULL(x);
+    CHECK_NOT_NULL(y);
+    scalar_opposite(y, y);
+    scalar_add(result, x, y);
+    scalar_opposite(y, y);
 }
 
-void scalar_mul(scalar_t* r, scalar_t* x, scalar_t* y)
+void scalar_mul(scalar_t* result, scalar_t* x, scalar_t* y)
 {
-    if (r == NULL || x == NULL || y == NULL) {
-        exception("scalar.mul(%p, %p, %p): null pointer exception", r, x, y);
-    }
+    CHECK_NOT_NULL(result);
+    CHECK_NOT_NULL(x);
+    CHECK_NOT_NULL(y);
 
-    scalar_cpy(r, x);
+    scalar_cpy(result, x);
 
-    r->a *= y->a;
-    r->b *= y->b;
+    result->a *= y->a;
+    result->b *= y->b;
 
     if (x->negative == y->negative) {
-        r->negative = false;
+        result->negative = false;
     } else {
-        r->negative = true;
+        result->negative = true;
     }
 
-    scalar_norm(r);
+    scalar_norm(result);
 }
 
-void scalar_div(scalar_t* r, scalar_t* x, scalar_t* y)
+void scalar_div(scalar_t* result, scalar_t* x, scalar_t* y)
 {
-    if (r == NULL || x == NULL || y == NULL) {
-        exception("scalar.div(%p, %p, %p): null pointer exception", r, x, y);
-    }
+    CHECK_NOT_NULL(result);
+    CHECK_NOT_NULL(x);
+    CHECK_NOT_NULL(y);
 
     if (y->a == 0) {
-        exception("scalar.div(%p, %p, %p): division by 0", r, x, y);
+        ERROR_MESSAGE("division by 0");
     }
 
     scalar_inverse(y, y);
-    scalar_mul(r, x, y);
+    scalar_mul(result, x, y);
     scalar_inverse(y, y);
 }
 
 scalar_t* scalar_opposite_get(scalar_t* scalar)
 {
-    if (scalar == NULL) {
-        exception("scalar.opposite(%p): null pointer exception", scalar);
-    }
-
+    CHECK_NOT_NULL(scalar);
     return scalar_new(scalar->a, scalar->b, !scalar->negative);
 }
 
 scalar_t* scalar_abs_get(scalar_t* scalar)
 {
-    if (scalar == NULL) {
-        exception("scalar.abs(%p): null pointer exception", scalar);
-    }
-
+    CHECK_NOT_NULL(scalar);
     return scalar_new(scalar->a, scalar->b, false);
 }
 
 scalar_t* scalar_inverse_get(scalar_t* scalar)
 {
-    if (scalar == NULL) {
-        exception("scalar.inverse(%p): null pointer exception", scalar);
-    }
-
+    CHECK_NOT_NULL(scalar);
     scalar_t* s = scalar_from(0);
-    scalar_inverse(s, s);
+    scalar_inverse(s, scalar);
     return s;
 }
 
 scalar_t* scalar_scale_get(scalar_t* scalar, uint64_t n, bool negative)
 {
-    if (scalar == NULL) {
-        exception("scalar.scale(%p, %zu, %s): null pointer exception",
-            scalar, n, negative ? "true" : "false");
-    }
-
+    CHECK_NOT_NULL(scalar);
     scalar_t* s = scalar_from(0);
-    scalar_scale(s, s, n, negative);
+    scalar_scale(s, scalar, n, negative);
     return s;
 }
 
 scalar_t* scalar_add_get(scalar_t* x, scalar_t* y)
 {
-    if (x == NULL || y == NULL) {
-        exception("scalar.add(%p, %p): null pointer exception", x, y);
-    }
-
+    CHECK_NOT_NULL(x);
+    CHECK_NOT_NULL(y);
     scalar_t* scalar = scalar_from(0);
     scalar_add(scalar, x, y);
     return scalar;
@@ -377,10 +350,8 @@ scalar_t* scalar_add_get(scalar_t* x, scalar_t* y)
 
 scalar_t* scalar_sub_get(scalar_t* x, scalar_t* y)
 {
-    if (x == NULL || y == NULL) {
-        exception("scalar.sub(%p, %p): null pointer exception", x, y);
-    }
-
+    CHECK_NOT_NULL(x);
+    CHECK_NOT_NULL(y);
     scalar_t* scalar = scalar_from(0);
     scalar_sub(scalar, x, y);
     return scalar;
@@ -388,10 +359,8 @@ scalar_t* scalar_sub_get(scalar_t* x, scalar_t* y)
 
 scalar_t* scalar_mul_get(scalar_t* x, scalar_t* y)
 {
-    if (x == NULL || y == NULL) {
-        exception("scalar.mul(%p, %p): null pointer exception", x, y);
-    }
-
+    CHECK_NOT_NULL(x);
+    CHECK_NOT_NULL(y);
     scalar_t* scalar = scalar_from(0);
     scalar_mul(scalar, x, y);
     return scalar;
@@ -399,10 +368,8 @@ scalar_t* scalar_mul_get(scalar_t* x, scalar_t* y)
 
 scalar_t* scalar_div_get(scalar_t* x, scalar_t* y)
 {
-    if (x == NULL || y == NULL) {
-        exception("scalar.div(%p, %p): null pointer exception", x, y);
-    }
-
+    CHECK_NOT_NULL(x);
+    CHECK_NOT_NULL(y);
     scalar_t* s = scalar_from(0);
     scalar_div(s, x, y);
     return s;
@@ -423,15 +390,10 @@ static size_t num_len(uint64_t x)
 
 char* scalar_string(scalar_t* scalar)
 {
-    if (scalar == NULL) {
-        exception("scalar.string(%p): null pointer exception", scalar);
-    }
+    CHECK_NOT_NULL(scalar);
 
     char* str = malloc(scalar_string_length(scalar));
-
-    if (str == NULL) {
-        exception("scalar.string(%p): null pointer exception", scalar);
-    }
+    CHECK_NOT_NULL(str);
 
     if (scalar->a == 0) {
         sprintf(str, "0");
@@ -449,9 +411,7 @@ char* scalar_string(scalar_t* scalar)
 
 size_t scalar_string_length(scalar_t* scalar)
 {
-    if (scalar == NULL) {
-        exception("scalar.string_length(%p): null pointer exception", scalar);
-    }
+    CHECK_NOT_NULL(scalar);
 
     size_t len = num_len(scalar->a) + 1; // '\0'
 
