@@ -19,7 +19,7 @@ typedef struct vector {
     }
 
 vector_t* vector_new(size_t n);
-vector_t* vector_from(scalar_t* vals[], size_t n);
+vector_t* vector_from(scalar_t* vals, size_t n);
 void      vector_copy(vector_t* dst, vector_t* src);
 void      vector_scale(vector_t* vector, scalar_t* scalar);
 void      vector_add(vector_t* u, vector_t* v);

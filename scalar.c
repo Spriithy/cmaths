@@ -3,6 +3,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+scalar_t zero = (scalar_t){ .negative = false, .a = 0, .b = 1 };
+
+scalar_t one = (scalar_t){ .negative = false, .a = 1, .b = 1 };
+
+#define scalar_cpy(dst, src)           \
+    {                                  \
+        dst->negative = src->negative; \
+        dst->a        = src->a;        \
+        dst->b        = src->b;        \
+    }
+
 static uint64_t uint64_gcd(uint64_t a, uint64_t b)
 {
     uint64_t r;
@@ -45,14 +56,6 @@ static void scalar_norm(scalar_t* scalar)
     scalar->b /= gcd;
 }
 
-static void scalar_cpy(scalar_t* dst, scalar_t* src)
-{
-    dst->negative = src->negative;
-
-    dst->a = src->a;
-    dst->b = src->b;
-}
-
 scalar_t* scalar_new(uint64_t a, uint64_t b, bool negative)
 {
     scalar_t* scalar = malloc(sizeof(*scalar));
@@ -76,6 +79,13 @@ void scalar_copy(scalar_t* dst, scalar_t* src)
     CHECK_NOT_NULL(dst);
     CHECK_NOT_NULL(src);
     scalar_cpy(dst, src);
+}
+
+scalar_t* scalar_duplicate(scalar_t* scalar)
+{
+    scalar_t* duplicate = malloc(sizeof(*duplicate));
+    scalar_copy(duplicate, scalar);
+    return duplicate;
 }
 
 scalar_cmp_t scalar_compare(scalar_t* x, scalar_t* y)

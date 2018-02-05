@@ -2,23 +2,28 @@
 #include "utils.h"
 #include "vector.h"
 #include <stdlib.h>
+#include <string.h>
 
 matrix_t* matrix_new(size_t m, size_t n)
 {
-    matrix_t* mat = malloc(sizeof(*mat));
-    CHECK_NOT_NULL(mat);
+    matrix_t* matrix = malloc(sizeof(*matrix));
+    CHECK_NOT_NULL(matrix);
 
-    mat->m = m;
-    mat->n = n;
+    matrix->m = m;
+    matrix->n = n;
 
-    mat->lines = calloc(m, sizeof(vector_t));
-    CHECK_NOT_NULL(mat->lines);
+    matrix->rows = malloc(m * sizeof(scalar_t*));
+    CHECK_NOT_NULL(matrix->rows);
 
     for (size_t i = 0; i < m; i++) {
-        mat->lines[i] = *vector_new(n);
+        matrix->rows[i] = malloc(n * sizeof(scalar_t));
+        CHECK_NOT_NULL(matrix->rows[i]);
+        for (size_t j = 0; j < n; j++) {
+            scalar_copy(&matrix->rows[i][j], &zero);
+        }
     }
 
-    return mat;
+    return matrix;
 }
 
 matrix_t* matrix_square(size_t n)
@@ -28,28 +33,26 @@ matrix_t* matrix_square(size_t n)
 
 matrix_t* matrix_eye(size_t n)
 {
-    matrix_t* mat = matrix_square(n);
+    matrix_t* matrix = matrix_square(n);
 
     for (size_t i = 0; i < n; i++) {
-        mat->lines[i].items[i].negative = false;
-        mat->lines[i].items[i].a        = 1;
-        mat->lines[i].items[i].b        = 1;
+        scalar_copy(&matrix->rows[i][i], &one);
     }
 
-    return mat;
+    return matrix;
 }
 
 matrix_t* matrix_from_diag(vector_t* diag)
 {
     CHECK_NOT_NULL(diag);
 
-    matrix_t* mat = matrix_square(diag->n);
+    matrix_t* matrix = matrix_square(diag->n);
 
     for (size_t i = 0; i < diag->n; i++) {
-        scalar_copy(&mat->lines[i].items[i], &diag->items[i]);
+        scalar_copy(&matrix->rows[i][i], &diag->items[i]);
     }
 
-    return mat;
+    return matrix;
 }
 
 matrix_t* matrix_from_vector(vector_t* vector, bool line)
@@ -59,24 +62,24 @@ matrix_t* matrix_from_vector(vector_t* vector, bool line)
     size_t m = line ? 1 : vector->n;
     size_t n = line ? vector->n : 1;
 
-    matrix_t* mat = matrix_new(m, n);
+    matrix_t* matrix = matrix_new(m, n);
 
     if (line) {
         for (size_t i = 0; i < vector->n; i++) {
-            scalar_copy(&mat->lines[0].items[i], &vector->items[i]);
+            scalar_copy(&matrix->rows[0][i], &vector->items[i]);
         }
 
-        return mat;
+        return matrix;
     }
 
     for (size_t i = 0; i < vector->n; i++) {
-        scalar_copy(&mat->lines[i].items[0], &vector->items[i]);
+        scalar_copy(&matrix->rows[i][0], &vector->items[i]);
     }
 
-    return mat;
+    return matrix;
 }
 
-matrix_t* matrix_from_prod(matrix_t* a, matrix_t* b)
+matrix_t* matrix_prod(matrix_t* a, matrix_t* b)
 {
     CHECK_NOT_NULL(a);
     CHECK_NOT_NULL(b);
@@ -97,10 +100,10 @@ matrix_t* matrix_from_prod(matrix_t* a, matrix_t* b)
             row = matrix_row(a, i);
             col = matrix_col(b, j);
             val = vector_dot_prod(row, col);
-            scalar_copy(&mat->lines[i].items[j], val);
-            free(val);
-            free(row);
-            free(col);
+            scalar_copy(&mat->rows[i][j], val);
+            scalar_delete(val);
+            vector_delete(row);
+            vector_delete(col);
         }
     }
 
@@ -114,7 +117,7 @@ void matrix_scale(matrix_t* matrix, scalar_t* scalar)
 
     for (size_t i = 0; i < matrix->m; i++) {
         for (size_t j = 0; j < matrix->n; j++) {
-            scalar_mul(&matrix->lines[i].items[j], &matrix->lines[i].items[j], scalar);
+            scalar_mul(&matrix->rows[i][j], &matrix->rows[i][j], scalar);
         }
     }
 }
@@ -130,7 +133,7 @@ void matrix_add(matrix_t* a, matrix_t* b)
 
     for (size_t i = 0; i < a->n; i++) {
         for (size_t j = 0; j < b->m; j++) {
-            scalar_add(&a->lines[i].items[j], &a->lines[i].items[j], &b->lines[i].items[j]);
+            scalar_add(&a->rows[i][j], &a->rows[i][j], &b->rows[i][j]);
         }
     }
 }
@@ -139,13 +142,14 @@ void matrix_sub(matrix_t* a, matrix_t* b)
 {
     CHECK_NOT_NULL(a);
     CHECK_NOT_NULL(b);
+
     if (a->m != b->m || a->n != b->n) {
         ERROR("matrix dimensions mismatch a=(%zu, %zu), b=(%zu, %zu)", a->m, a->n, b->m, b->n);
     }
 
     for (size_t i = 0; i < a->n; i++) {
         for (size_t j = 0; j < b->m; j++) {
-            scalar_sub(&a->lines[i].items[j], &a->lines[i].items[j], &b->lines[i].items[j]);
+            scalar_sub(&a->rows[i][j], &a->rows[i][j], &b->rows[i][j]);
         }
     }
 }
@@ -158,9 +162,7 @@ vector_t* matrix_row(matrix_t* matrix, size_t i)
         ERROR("row number out of bounds (i=%zu)", i);
     }
 
-    vector_t* line = vector_new(matrix->n);
-    vector_copy(line, &matrix->lines[i]);
-    return line;
+    return vector_from(matrix->rows[i], matrix->n);
 }
 
 vector_t* matrix_col(matrix_t* matrix, size_t j)
@@ -173,7 +175,7 @@ vector_t* matrix_col(matrix_t* matrix, size_t j)
 
     vector_t* col = vector_new(matrix->m);
     for (size_t i = 0; i < matrix->m; i++) {
-        scalar_copy(&col->items[i], &matrix->lines[i].items[j]);
+        scalar_copy(&col->items[i], &matrix->rows[i][j]);
     }
 
     return col;
@@ -183,24 +185,27 @@ vector_t* matrix_diag(matrix_t* matrix)
 {
     CHECK_NOT_NULL(matrix);
 
-    vector_t* col = vector_new(matrix->m);
-
+    vector_t* diag = vector_new(matrix->m);
     for (size_t i = 0; i < matrix->m; i++) {
-        scalar_copy(&col->items[i], &matrix->lines[i].items[i]);
+        scalar_copy(&diag->items[i], &matrix->rows[i][i]);
     }
 
-    return col;
+    return diag;
 }
 
 scalar_t* matrix_get(matrix_t* matrix, size_t i, size_t j)
 {
     CHECK_NOT_NULL(matrix);
 
-    if (i >= matrix->m || j >= matrix->n) {
-        ERROR("matrix index out of bounds a=(%zu, %zu), (i=%zu, j=%zu)", matrix->m, matrix->n, i, j);
+    if (i >= matrix->m) {
+        ERROR("row number out of bounds (i=%zu)", i);
     }
 
-    return scalar_new(matrix->lines[i].items[j].a, matrix->lines[i].items[j].b, matrix->lines[i].items[j].negative);
+    if (j >= matrix->n) {
+        ERROR("column number out of bounds (j=%zu)", j);
+    }
+
+    return scalar_duplicate(&matrix->rows[i][j]);
 }
 
 void matrix_set(matrix_t* matrix, size_t i, size_t j, scalar_t* scalar)
@@ -208,11 +213,15 @@ void matrix_set(matrix_t* matrix, size_t i, size_t j, scalar_t* scalar)
     CHECK_NOT_NULL(matrix);
     CHECK_NOT_NULL(scalar);
 
-    if (i >= matrix->m || j >= matrix->n) {
-        ERROR("matrix index out of bounds a=(%zu, %zu), (i=%zu, j=%zu)", matrix->m, matrix->n, i, j);
+    if (i >= matrix->m) {
+        ERROR("row number out of bounds (i=%zu)", i);
     }
 
-    scalar_copy(&matrix->lines[i].items[j], scalar);
+    if (j >= matrix->n) {
+        ERROR("column number out of bounds (j=%zu)", j);
+    }
+
+    scalar_copy(&matrix->rows[i][j], scalar);
 }
 
 scalar_t* matrix_det(matrix_t* mat);
@@ -223,18 +232,18 @@ matrix_t* matrix_transpose(matrix_t* matrix)
 {
     CHECK_NOT_NULL(matrix);
 
-    matrix_t* inverse = matrix_new(matrix->n, matrix->m);
+    matrix_t* transpose = matrix_new(matrix->n, matrix->m);
 
     for (size_t i = 0; i < matrix->m; i++) {
         for (size_t j = 0; j < matrix->n; j++) {
-            scalar_copy(&inverse->lines[j].items[i], &matrix->lines[i].items[j]);
+            scalar_copy(&transpose->rows[j][i], &matrix->rows[i][j]);
         }
     }
 
-    return inverse;
+    return transpose;
 }
 
-void matrix_lu(matrix_t* matrix, matrix_t* L, matrix_t* U)
+void matrix_lu(matrix_t* matrix, matrix_t** L, matrix_t** U)
 {
     CHECK_NOT_NULL(matrix);
 
@@ -244,8 +253,8 @@ void matrix_lu(matrix_t* matrix, matrix_t* L, matrix_t* U)
 
     size_t n = matrix->m;
 
-    L = matrix_eye(n);
-    U = matrix_square(n);
+    *L = matrix_eye(n);
+    *U = matrix_square(n);
 
     for (size_t i = 0; i < n; i++) {
 
@@ -256,13 +265,13 @@ void matrix_lu(matrix_t* matrix, matrix_t* L, matrix_t* U)
             scalar_t* sum = scalar_from(0);
             scalar_t* tmp = scalar_from(0);
             for (size_t j = 0; j < i; j++) {
-                scalar_mul(tmp, &L->lines[i].items[j], &U->lines[j].items[k]);
+                scalar_mul(tmp, &(*L)->rows[i][j], &(*U)->rows[j][k]);
                 scalar_add(sum, sum, tmp);
             }
 
             // Evaluating U(i, k)
-            scalar_sub(tmp, &matrix->lines[i].items[k], sum);
-            scalar_copy(&U->lines[i].items[k], tmp);
+            scalar_sub(tmp, &matrix->rows[i][k], sum);
+            scalar_copy(&(*U)->rows[i][k], tmp);
 
             scalar_delete(tmp);
             scalar_delete(sum);
@@ -276,64 +285,96 @@ void matrix_lu(matrix_t* matrix, matrix_t* L, matrix_t* U)
                 scalar_t* sum = scalar_from(0);
                 scalar_t* tmp = scalar_from(0);
                 for (size_t j = 0; j < i; j++) {
-                    scalar_mul(tmp, &L->lines[k].items[j], &U->lines[j].items[i]);
+                    scalar_mul(tmp, &(*L)->rows[k][j], &(*U)->rows[j][i]);
                     scalar_add(sum, sum, tmp);
                 }
 
                 // Evaluating L(k, i)
-                scalar_sub(tmp, &matrix->lines[k].items[i], sum);
-                scalar_div(tmp, tmp, &U->lines[i].items[i]);
-                scalar_copy(&L->lines[k].items[i], tmp);
+                scalar_sub(tmp, &matrix->rows[k][i], sum);
+                scalar_div(tmp, tmp, &(*U)->rows[i][i]);
+                scalar_copy(&(*L)->rows[k][i], tmp);
 
                 scalar_delete(tmp);
                 scalar_delete(sum);
             }
         }
     }
-
-    puts(matrix_string(L));
-    puts(matrix_string(U));
 }
 
 matrix_t* matrix_chol(matrix_t* matrix);
 
-char* matrix_string(matrix_t* mat)
+char* matrix_string(matrix_t* matrix)
 {
-    if (mat == NULL || mat->lines == NULL) {
-        ERROR("matrix.string(%p): null pointer ERROR (lines=%p)", mat, mat->lines);
+    CHECK_NOT_NULL(matrix);
+
+    if (matrix->m == 1) {
+        vector_t* vector = vector_from(matrix->rows[0], matrix->n);
+        return vector_string(vector);
     }
 
-    size_t len = 3; // '[' + mat + ']\0'
+    size_t* col_width = calloc(matrix->n, sizeof(size_t));
+    CHECK_NOT_NULL(col_width);
 
-    for (size_t i = 0; i < mat->m; i++) {
-        len += 2 + vector_string_length(&mat->lines[i]); // ' ' + vec + '\n'
+    // Compute each column's size
+    for (size_t j = 0; j < matrix->n; j++) {
+        col_width[j] = 1;
+        for (size_t i = 0; i < matrix->m; i++) {
+            size_t width = scalar_string_length(&matrix->rows[i][j]);
+            if (width > col_width[j]) {
+                col_width[j] = width; // discard '\0'
+            }
+        }
     }
 
-    // discard the first space if matrix isn't empty
-    if (mat->m > 0) {
-        len--;
+    // Compute the total string's length
+    size_t str_length = 0;
+    for (size_t j = 0; j < matrix->n; j++) {
+        str_length += 3;             // left and right separator + line feed
+        str_length += matrix->n - 1; // n-1 spaces to separate columns
+        str_length += col_width[j];  // column's width
     }
 
-    char* str = malloc(len);
-
+    char* str = malloc(str_length);
     CHECK_NOT_NULL(str);
 
-    if (str == NULL) {
-        ERROR("matrix.string(%p): null pointer ERROR", mat);
+    char* loc     = str;
+    char* val_fmt = "%%%zus";
+
+    char tmp[64] = { 0 };
+
+    for (size_t i = 0; i < matrix->m; i++) {
+        // line prefix
+        if (i == 0) {
+            loc += sprintf(loc, "⎡");
+        } else if (i == matrix->m - 1) {
+            loc += sprintf(loc, "⎣");
+        } else {
+            loc += sprintf(loc, "⎢");
+        }
+
+        for (size_t j = 0; j < matrix->n; j++) {
+            // build column-appropriate fmt string
+            sprintf(tmp, val_fmt, col_width[j]);
+
+            // space if needed
+            if (j > 0) {
+                loc += sprintf(loc, " ");
+            }
+
+            char* scalar = scalar_string(&matrix->rows[i][j]);
+            loc += sprintf(loc, tmp, scalar);
+        }
+
+        // end of line separator
+        if (i == 0) {
+            loc += sprintf(loc, "⎤\n");
+        } else if (i == matrix->m - 1) {
+            loc += sprintf(loc, "⎦");
+        } else {
+            loc += sprintf(loc, "⎥\n");
+        }
     }
 
-    char *ofs, *tmp;
-
-    ofs = str + sprintf(str, "[");
-    for (size_t i = 0; i < mat->m; i++) {
-        tmp = vector_string(&mat->lines[i]);
-        ofs += sprintf(ofs, i == 0 ? "%s\n" : " %s\n", tmp);
-        free(tmp);
-    }
-
-    if (mat->m > 0) {
-        sprintf(ofs - 1, "]");
-    }
-
+    free(col_width);
     return str;
 }

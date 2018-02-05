@@ -25,6 +25,8 @@ typedef struct scalar {
     uint64_t b;
 } scalar_t;
 
+extern scalar_t zero, one;
+
 #define scalar_delete(scalar) \
     if (scalar != NULL) {     \
         free(scalar);         \
@@ -34,6 +36,7 @@ typedef struct scalar {
 scalar_t*    scalar_new(uint64_t a, uint64_t b, bool negative);
 scalar_t*    scalar_from(int64_t n);
 void         scalar_copy(scalar_t* dst, scalar_t* src);
+scalar_t*    scalar_duplicate(scalar_t* scalar);
 scalar_cmp_t scalar_compare(scalar_t* x, scalar_t* y);
 bool         scalar_equals(scalar_t* x, scalar_t* y);
 bool         scalar_greater_equal(scalar_t* x, scalar_t* y);

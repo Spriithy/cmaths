@@ -7,26 +7,26 @@ vector_t* vector_new(size_t n)
     vector_t* vector = malloc(sizeof(*vector));
     CHECK_NOT_NULL(vector);
 
-    vector->n     = n;
-    vector->items = calloc(n, sizeof(scalar_t));
+    vector->n = n;
+
+    vector->items = malloc(n * sizeof(scalar_t));
     CHECK_NOT_NULL(vector->items);
 
     for (size_t i = 0; i < n; i++) {
-        vector->items[i].a = 0;
-        vector->items[i].b = 1;
+        scalar_copy(&vector->items[i], &zero);
     }
 
     return vector;
 }
 
-vector_t* vector_from(scalar_t* vals[], size_t n)
+vector_t* vector_from(scalar_t* vals, size_t n)
 {
     CHECK_NOT_NULL(vals);
 
     vector_t* vector = vector_new(n);
 
     for (size_t i = 0; i < n; i++) {
-        scalar_copy(&vector->items[i], vals[i]);
+        scalar_copy(&vector->items[i], &vals[i]);
     }
 
     return vector;
