@@ -384,13 +384,12 @@ scalar_t* scalar_div_get(scalar_t* x, scalar_t* y)
 
 static size_t num_len(uint64_t x)
 {
-    size_t   len = 0;
-    uint64_t tmp = 1;
+    size_t len = 0;
 
-    while (tmp < x) {
-        tmp = (tmp << 3) + (tmp << 1);
+    do {
         len++;
-    }
+        x /= 10; // x /= 10
+    } while (x > 9);
 
     return len;
 }
@@ -420,9 +419,9 @@ size_t scalar_string_length(scalar_t* scalar)
 {
     CHECK_NOT_NULL(scalar);
 
-    size_t len = num_len(scalar->a) + 1; // '\0'
+    size_t len = num_len(scalar->a);
 
-    if (scalar->b != 1) {
+    if (scalar->b > 1) {
         len += num_len(scalar->b) + 1; // '/' + divisor
     }
 
@@ -430,5 +429,5 @@ size_t scalar_string_length(scalar_t* scalar)
         len++;
     }
 
-    return len;
+    return 1 + len;
 }
