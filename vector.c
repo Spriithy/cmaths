@@ -63,7 +63,7 @@ void vector_add(vector_t* u, vector_t* v)
     }
 
     for (size_t i = 0; i < v->n; i++) {
-        scalar_add(&v->items[i], &u->items[i], &v->items[i]);
+        scalar_add(&u->items[i], &u->items[i], &v->items[i]);
     }
 }
 
@@ -77,7 +77,7 @@ void vector_sub(vector_t* u, vector_t* v)
     }
 
     for (size_t i = 0; i < v->n; i++) {
-        scalar_sub(&v->items[i], &u->items[i], &v->items[i]);
+        scalar_sub(&u->items[i], &u->items[i], &v->items[i]);
     }
 }
 
@@ -87,19 +87,19 @@ scalar_t* vector_dot_prod(vector_t* u, vector_t* v)
     CHECK_NOT_NULL(v);
 
     if (u->n != v->n) {
-        ERROR("vector size mismatch (u=%zu, v=%zu)", u->n, v->n);
+        ERROR("vector dimension mismatch (u=%zu, v=%zu)", u->n, v->n);
     }
 
-    scalar_t* dot = scalar_from(0);
+    scalar_t* prod = scalar_from(0);
 
     scalar_t* tmp = scalar_from(0);
     for (size_t i = 0; i < u->n; i++) {
         scalar_mul(tmp, &u->items[i], &v->items[i]);
-        scalar_add(dot, dot, tmp);
+        scalar_add(prod, prod, tmp);
     }
     free(tmp);
 
-    return dot;
+    return prod;
 }
 
 scalar_t* vector_get(vector_t* vector, size_t i)
@@ -108,7 +108,7 @@ scalar_t* vector_get(vector_t* vector, size_t i)
         ERROR("index out of bounds (i=%zu, size=%zu)", i, vector->n);
     }
 
-    return scalar_new(vector->items[i].a, vector->items[i].b, vector->items[i].negative);
+    return scalar_duplicate(&vector->items[i]);
 }
 
 void vector_set(vector_t* vector, size_t i, scalar_t* scalar)
