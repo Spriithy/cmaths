@@ -41,9 +41,10 @@ scalar_t* matrix_get(matrix_t* matrix, size_t i, size_t j);
 void      matrix_set(matrix_t* matrix, size_t i, size_t j, scalar_t* x);
 scalar_t* matrix_det(matrix_t* matrix);
 bool      matrix_is_inversible(matrix_t* matrix);
+matrix_t* matrix_pivotise(matrix_t* matrix);
 matrix_t* matrix_inverse(matrix_t* matrix);
 matrix_t* matrix_transpose(matrix_t* matrix);
-void      matrix_lu(matrix_t* matrix, matrix_t** L, matrix_t** U);
+void      matrix_lu(matrix_t* matrix, matrix_t** L, matrix_t** U, matrix_t** P);
 matrix_t* matrix_chol(matrix_t* matrix);
 char*     matrix_string(matrix_t* matrix);
 

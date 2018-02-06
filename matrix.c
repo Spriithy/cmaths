@@ -226,6 +226,36 @@ void matrix_set(matrix_t* matrix, size_t i, size_t j, scalar_t* scalar)
 
 scalar_t* matrix_det(matrix_t* mat);
 bool      matrix_is_inversible(matrix_t* mat);
+
+matrix_t* matrix_pivotise(matrix_t* matrix)
+{
+    CHECK_NOT_NULL(matrix);
+
+    if (matrix->m != matrix->n) {
+        ERROR_MESSAGE("not a square matrix");
+    }
+
+    matrix_t* P = matrix_eye(matrix->m);
+
+    for (size_t i = 0; i < P->m; i++) {
+        scalar_t* max = &matrix->rows[i][i];
+        size_t    row = i;
+        for (size_t j = i; j < P->n; j++)
+            if (scalar_greater_than(&matrix->rows[j][i], max)) {
+                max = &matrix->rows[j][i];
+                row = j;
+            }
+
+        if (i != row) {
+            scalar_t* tmp = P->rows[i];
+            P->rows[i]    = P->rows[row];
+            P->rows[row]  = tmp;
+        }
+    }
+
+    return P;
+}
+
 matrix_t* matrix_inverse(matrix_t* mat);
 
 matrix_t* matrix_transpose(matrix_t* matrix)
@@ -243,7 +273,7 @@ matrix_t* matrix_transpose(matrix_t* matrix)
     return transpose;
 }
 
-void matrix_lu(matrix_t* matrix, matrix_t** L, matrix_t** U)
+void matrix_lu(matrix_t* matrix, matrix_t** L, matrix_t** U, matrix_t** P)
 {
     CHECK_NOT_NULL(matrix);
 
@@ -255,50 +285,38 @@ void matrix_lu(matrix_t* matrix, matrix_t** L, matrix_t** U)
 
     *L = matrix_eye(n);
     *U = matrix_square(n);
+    *P = matrix_pivotise(matrix);
 
-    for (size_t i = 0; i < n; i++) {
+    matrix_t* A = matrix_prod(*P, matrix);
 
-        // Upper Triangular
-        for (size_t k = i; k < n; k++) {
-
-            // Summation of L(i, j) * U(j, k)
+    scalar_t* tmp  = scalar_from(0);
+    scalar_t* tmp2 = scalar_from(0);
+    for (size_t j = 0; j < n; j++) {
+        for (size_t i = 0; i < j + 1; i++) {
             scalar_t* sum = scalar_from(0);
-            scalar_t* tmp = scalar_from(0);
-            for (size_t j = 0; j < i; j++) {
-                scalar_mul(tmp, &(*L)->rows[i][j], &(*U)->rows[j][k]);
+            for (size_t k = 0; k < i; k++) {
+                scalar_mul(tmp, &(*U)->rows[k][j], &(*L)->rows[i][k]);
                 scalar_add(sum, sum, tmp);
             }
-
-            // Evaluating U(i, k)
-            scalar_sub(tmp, &matrix->rows[i][k], sum);
-            scalar_copy(&(*U)->rows[i][k], tmp);
-
-            scalar_delete(tmp);
+            scalar_sub(tmp, &A->rows[i][j], sum);
+            scalar_copy(&(*U)->rows[i][j], tmp);
             scalar_delete(sum);
         }
 
-        // Lower Triangular
-        for (size_t k = i; k < n; k++) {
-            if (i != k) {
-
-                // Summation of L(k, j) * U(j, i)
-                scalar_t* sum = scalar_from(0);
-                scalar_t* tmp = scalar_from(0);
-                for (size_t j = 0; j < i; j++) {
-                    scalar_mul(tmp, &(*L)->rows[k][j], &(*U)->rows[j][i]);
-                    scalar_add(sum, sum, tmp);
-                }
-
-                // Evaluating L(k, i)
-                scalar_sub(tmp, &matrix->rows[k][i], sum);
-                scalar_div(tmp, tmp, &(*U)->rows[i][i]);
-                scalar_copy(&(*L)->rows[k][i], tmp);
-
-                scalar_delete(tmp);
-                scalar_delete(sum);
+        for (size_t i = j; i < n; i++) {
+            scalar_t* sum = scalar_from(0);
+            for (size_t k = 0; k < j; k++) {
+                scalar_mul(tmp, &(*U)->rows[k][j], &(*L)->rows[i][k]);
+                scalar_add(sum, sum, tmp);
             }
+            scalar_sub(tmp, &A->rows[i][j], sum);
+            scalar_copy(tmp2, tmp);
+            scalar_div(tmp, tmp2, &(*U)->rows[j][j]);
+            scalar_copy(&(*L)->rows[i][j], tmp);
         }
     }
+    scalar_delete(tmp2);
+    scalar_delete(tmp);
 }
 
 matrix_t* matrix_chol(matrix_t* matrix);
@@ -319,15 +337,16 @@ char* matrix_string(matrix_t* matrix)
     for (size_t j = 0; j < matrix->n; j++) {
         col_width[j] = 1;
         for (size_t i = 0; i < matrix->m; i++) {
-            size_t width = scalar_string_length(&matrix->rows[i][j]);
+            size_t width = scalar_string_length(&matrix->rows[i][j]) - 1;
             if (width > col_width[j]) {
-                col_width[j] = width + (width > 2 ? -1 : 0);
+                col_width[j] = width;
             }
         }
     }
 
     // Compute the total string's length
     size_t str_length = 0;
+
     for (size_t j = 0; j < matrix->n; j++) {
         str_length += 3;             // left and right separator + line feed
         str_length += matrix->n - 1; // n-1 spaces to separate columns
@@ -338,9 +357,8 @@ char* matrix_string(matrix_t* matrix)
     CHECK_NOT_NULL(str);
 
     char* loc     = str;
-    char* val_fmt = "%%%zus";
-
-    char tmp[64] = { 0 };
+    char* val_fmt = "%%%zus ";
+    char  tmp[64] = { 0 };
 
     for (size_t i = 0; i < matrix->m; i++) {
         // line prefix
@@ -356,16 +374,15 @@ char* matrix_string(matrix_t* matrix)
             // build column-appropriate fmt string
             sprintf(tmp, val_fmt, col_width[j]);
 
-            // space if needed
-            if (j > 0) {
-                loc += sprintf(loc, " ");
-            }
-
             char* scalar = scalar_string(&matrix->rows[i][j]);
             loc += sprintf(loc, tmp, scalar);
+
+            if (j == matrix->n - 1) {
+                loc--;
+            }
         }
 
-        // end of line separator
+        // line suffix
         if (i == 0) {
             loc += sprintf(loc, "⎤\n");
         } else if (i == matrix->m - 1) {
